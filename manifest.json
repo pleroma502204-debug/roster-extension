@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Noah排班",
+  "version": "2.0.0",
+  "description": "找Noah: pleroma502204@gmail.com",
+
+  "permissions": [
+    "storage",
+    "tabs",
+    "windows",
+    "offscreen",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://cdn.jsdelivr.net/*"
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "排班小幫手"
+  },
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "index.html",
+        "app.css",
+        "app.js",
+        "offscreen/offscreen.html",
+        "offscreen/offscreen.js",
+        "src/pages/**/*",
+        "src/shared/**/*",
+        "src/core/**/*",
+        "src/libs/*",
+        "ico/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+  "icons": {
+    "16":  "ico/chestnut_16x16.png",
+    "32":  "ico/chestnut_32x32.png",
+    "128": "ico/chestnut_128x128.png"
+  }
+}

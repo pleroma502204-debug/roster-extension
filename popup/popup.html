@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>排班小幫手</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 220px;
+      font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+      background: #1a1a2e;
+      color: #e8e8f0;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .header h1 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #a0a8d0;
+    }
+    .header p {
+      font-size: 10px;
+      color: #555580;
+      margin-top: 2px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Section ── */
+    .section {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #555580;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 4px 2px;
+    }
+
+    .divider { height: 1px; background: #2a2a4a; margin: 0 8px; }
+
+    /* ── Nav buttons ── */
+    button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #c8cce8;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      text-align: left;
+      letter-spacing: 0.03em;
+    }
+    button:hover { background: #2a2a4a; color: #fff; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+    /* ── Export buttons row ── */
+    .export-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px 4px 2px;
+    }
+    .export-row button {
+      justify-content: center;
+      padding: 8px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #2a2a4a;
+      gap: 5px;
+    }
+    .export-row button.primary {
+      background: #3a3a6a;
+      border-color: #5a5a9a;
+      color: #c8cce8;
+    }
+    .export-row button.primary:hover { background: #4a4a8a; color: #fff; }
+    .export-row button.ghost { color: #888aaa; }
+    .export-row button.ghost:hover { background: #2a2a4a; color: #c8cce8; }
+
+    /* ── Data io row ── */
+    .io-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px 4px 2px;
+    }
+    .io-row button {
+      justify-content: center;
+      padding: 7px 4px;
+      font-size: 12px;
+      border: 1px solid #2a2a4a;
+      gap: 5px;
+    }
+    .io-row button:hover { background: #2a2a4a; color: #fff; }
+
+    /* ── Status message ── */
+    #status-msg {
+      font-size: 10px;
+      color: #888aaa;
+      text-align: center;
+      padding: 4px 8px 6px;
+      min-height: 20px;
+      display: none;
+    }
+    #status-msg.show { display: block; }
+    #status-msg.error { color: #ff6b6b; }
+    #status-msg.ok    { color: #4ecdc4; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <h1>排班小幫手</h1>
+    <p>排班管理工具</p>
+  </div>
+
+  <!-- ── 區塊一：導覽 ── -->
+  <div class="section">
+    <button id="btn-home"><span class="icon">⚙️</span> 首頁</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── 區塊二：生產班表 ── -->
+  <div class="section">
+    <div class="section-title">產生班表</div>
+    <div class="export-row">
+      <button class="primary" id="btn-export-xlsx">
+        <span class="icon">📊</span> XLSX
+      </button>
+      <button class="ghost" id="btn-export-json">
+        <span class="icon">📄</span> JSON
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── 區塊三：基本資料 匯出/入 ── -->
+  <div class="section">
+    <div class="section-title">基本資料</div>
+    <div class="io-row">
+      <button id="btn-export-data">
+        <span class="icon">⬆️</span> 匯出
+      </button>
+      <button id="btn-import-data">
+        <span class="icon">⬇️</span> 匯入
+      </button>
+    </div>
+    <!-- 隱藏的 file input 供匯入使用 -->
+    <input type="file" id="import-file" accept=".json" style="display:none">
+  </div>
+
+  <div id="status-msg"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
