@@ -4,7 +4,8 @@
 // ════════════════════════════════════════════
 
 import { getSettingsState, setSettingsState } from '../../../core/store/globalState.js';
-import { showHint, bindEl }                   from '../../../shared/utils/dom.js';
+import { bindEl }                             from '../../../shared/utils/dom.js';
+import { showHint }                           from '../../../shared/utils/notify.js';
 
 const TODAY = new Date();
 

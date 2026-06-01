@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
+  <!-- Toast Msg -->
+  <div id="toast-msg" class="toast"></div>
 
   <!-- ════════════════════════════════════════
        SPA 骨架
@@ -118,6 +120,27 @@
             </div>
           </div>
         </div>
+        <!-- 排班符號設定 -->
+        <div class="card">
+          <div class="card-header">
+            <h2>排班符號設定</h2>
+            <span class="save-hint" id="key-hint">已儲存 ✓</span>
+          </div>
+          <div class="card-body">
+              <div class="field-row">
+                <div class="field">
+                  <label>值班符</label>
+                  <input type="text" id="on-duty-key" placeholder="✔" maxlength="2">
+                </div>
+                <div class="field">
+                  <label>佔位符</label>
+                  <input type="text" id="non-empty-key" placeholder="-" maxlength="1">
+                </div>
+                <button class="btn btn-primary" id="btn-save-key">儲存</button>
+              </div>
+              
+          </div>
+        </div>
 
         <!-- 假別設定 -->
         <div class="card">
@@ -159,15 +182,15 @@
         <div class="card">
           <div class="card-header">
             <h2>轄區設定</h2>
-            <span class="save-hint" id="dist-hint">已儲存 ✓</span>
+            <span class="save-hint" id="region-hint">已儲存 ✓</span>
           </div>
           <div class="card-body">
-            <div class="chips" id="dist-chips"></div>
+            <div class="chips" id="region-chips"></div>
             <div class="field" style="margin-top:12px">
               <label>新轄區</label>
               <div class="field-row">
-                <input type="text" id="dist-input" placeholder="北北基" maxlength="6">
-                <button class="btn btn-primary" id="btn-add-dist">新增</button>
+                <input type="text" id="region-input" placeholder="北北基" maxlength="6">
+                <button class="btn btn-primary" id="btn-add-region">新增</button>
               </div>
             </div>
           </div>
@@ -258,13 +281,11 @@
               <h2>通勤地圖</h2>
             </div>
             <div class="card-body">
-              <section id="tab-overview" class="tab-content active">
-                <div class="map-controls">
-                  <select id="map-emp-select"><option value="">選擇人員…</option></select>
-                  <select id="map-site-select"><option value="">選擇據點…</option></select>
-                  <button class="btn btn-primary" id="btn-open-map">開啟 Google Maps</button>
-                </div>
-              
+              <div class="map-controls">
+                <select id="map-emp-select"><option value="">選擇人員…</option></select>
+                <select id="map-site-select"><option value="">選擇據點…</option></select>
+                <button class="btn btn-primary" id="btn-open-map">開啟 Google Maps</button>
+              </div>
             </div>
           </div>
         </section>
@@ -279,7 +300,7 @@
               <option value="night">夜班</option>
               <option value="both">日/夜</option>
             </select>
-            <select id="emp-isReg-filter">
+            <select id="emp-mobility-filter">
               <option value="">全班別</option>
               <option value="regular">正班</option>
               <option value="flex">機動</option>
@@ -305,7 +326,7 @@
         <section id="tab-sites" class="tab-content">
           <div class="toolbar">
             <input type="text" id="site-search" placeholder="搜尋據點…">
-            <select id="site-dist-filter">
+            <select id="site-region-filter">
               <option value="">全轄區</option>
             </select>
             <select id="site-located-filter">
@@ -341,16 +362,18 @@
         <div class="modal-body">
           <div class="field-group cols-3">
             <div class="field"><label>名稱 *</label><input type="text" id="s-name" placeholder="OO社區"></div>
-            <div class="field"><label>簡稱 *</label><input type="text" id="s-shortName"></div>
+            <div class="field"><label>簡稱 *</label><input type="text" maxlength="4" id="s-shortName"></div>
             <div class="field"><label>社區電話 *</label><input type="text" id="s-phone"></div>
           </div>
           <div class="field-group cols-3">
-            <div class="field"><label>轄區</label><select id="s-dist"></select></div>
+            <div class="field"><label>轄區</label><select id="s-region"></select></div>
             <div class="field"><label>駐地</label><select id="s-located"></select></div>
             <div class="field"><label>Email</label><input type="text" id="s-email"></div>
           </div>
-          <div class="field-group cols-1">
-            <div class="field"><label>地址 *</label><input type="text" id="s-address"></div>
+          <div class="field-group cols-3">
+            <div class="field"><label>地址 *</label><select id="s-city"></select></div>
+            <div class="field"><select id="s-dist"></select></div>
+            <div class="field"><input type="text" id="s-address"></div>
           </div>
           <div class="field-group cols-1">
             <div class="field"><label>備註</label><input type="text" id="s-note"></div>
@@ -397,7 +420,7 @@
             </div>
             <div class="field">
               <label>班別 *</label>
-              <select id="e-isReg"></select>
+              <select id="e-mobility"></select>
             </div>
             <div class="field"><label>接受天數</label><input type="number" min="1" max="31" id="e-days"></div>
           </div>
@@ -517,4 +540,5 @@
   <script type="module" src="app.js"></script>
 
 </body>
+
 </html>

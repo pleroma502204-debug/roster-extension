@@ -141,16 +141,18 @@ function _buildDayMap(arr, dateField, monthStr) {
 }
 
 function _getEmpDutyLabel(emp, siteId) {
-  const arr = emp.arranged?.find(a => a.siteId === siteId);
-  return arr?.duties?.length ? arr.duties.join('/') : '—';
+  const arr = emp.arrSites?.find(a => a.siteId === siteId);
+  return arr?.duty ?? '—';
 }
 
 // ── 格狀態 ────────────────────────────────────
 function _applyCellState(td, val, readonly = false) {
   td.classList.remove('state-work', 'state-pending', 'state-leave', 'state-dash');
+  const onDutyKey = getSettingsState().onDutyKey ?? DEFAULT_ONDUTY_KEY;
+
   if (val === undefined)   { td.classList.add('state-pending'); td.textContent = ''; }
-  else if (val === 'work') { td.classList.add('state-work');    td.textContent = '✔'; }
-  else if (val === 'dash') { td.classList.add('state-dash');    td.textContent = '-'; }
+  else if (val === 'work') { td.classList.add('state-work'); td.textContent = onDutyKey[0]; }
+  else if (val === 'dash') { td.classList.add('state-dash'); td.textContent = onDutyKey[1]; }
   else                     { td.classList.add('state-leave');   td.textContent = val; }
   if (readonly) td.style.pointerEvents = 'none';
 }
@@ -185,7 +187,7 @@ export function renderBigTable() {
   const { activeSites: sites, activeEmployees: employees } = getDerived();
   const schedule     = getScheduleState();
   const monthStr     = `${y}-${String(m).padStart(2, '0')}`;
-  const resignDayMap = _buildDayMap(employees, 'resignDate', monthStr);
+  const resignDayMap = _buildDayMap(employees, 'lastDate', monthStr);
   wrap.innerHTML     = '';
 
   const table = _makeTable('big-table', days);
@@ -215,7 +217,7 @@ export function renderBigTable() {
         for (const site of sites) {
           const v = schedule[site.id]?.[emp.id]?.[d];
           if (v === undefined) continue;
-          if (v === 'work')  { cellVal = (site.shortName || site.name).charAt(0); cellColor = 'var(--text2)'; break; }
+          if (v === 'work')  { cellVal = site.name[2] || site.name[1]?.[0] || site.name[0]?.[0] || '?'; }
           if (v === 'dash')  { continue; }
           cellVal = v; break;
         }
@@ -242,15 +244,15 @@ export function renderCommunityTable() {
   const { activeSites: sites, activeEmployees: employees } = getDerived();
   const schedule       = getScheduleState();
   const monthStr       = `${y}-${String(m).padStart(2, '0')}`;
-  const districtDayMap = _buildDayMap(sites, 'districtDate', monthStr);
-  const resignDayMap   = _buildDayMap(employees, 'resignDate', monthStr);
+  const districtDayMap = _buildDayMap(sites, 'HOADate', monthStr);
+  const resignDayMap   = _buildDayMap(employees, 'lastDate', monthStr);
   wrap.innerHTML       = '';
 
   for (const site of sites) {
     const siteData    = schedule[site.id] ?? {};
     const districtDay = districtDayMap[site.id] ?? null;
-    const regularEmps = employees.filter(e =>  e.isReg && e.arranged?.some(a => a.siteId === site.id));
-    const flexEmps    = employees.filter(e => !e.isReg && e.arranged?.some(a => a.siteId === site.id));
+    const regularEmps = employees.filter(e => e.mobility === '正班' && e.arrSites?.some(a => a.siteId === site.id));
+    const flexEmps    = employees.filter(e => e.mobility === '機動' && e.arrSites?.some(a => a.siteId === site.id));
 
     const table = _makeTable(`site-table-${site.id}`, days);
     _buildDateHeader(table, site.shortName || site.name, y, m, days, districtDay);
@@ -281,12 +283,12 @@ export function renderEmployeeTable() {
   const { activeSites: sites, activeEmployees: employees } = getDerived();
   const schedule       = getScheduleState();
   const monthStr       = `${y}-${String(m).padStart(2, '0')}`;
-  const districtDayMap = _buildDayMap(sites, 'districtDate', monthStr);
-  const resignDayMap   = _buildDayMap(employees, 'resignDate', monthStr);
+  const districtDayMap = _buildDayMap(sites, 'HOADate', monthStr);
+  const resignDayMap   = _buildDayMap(employees, 'lastDate', monthStr);
   wrap.innerHTML       = '';
 
   for (const emp of employees) {
-    const arrangedSites = sites.filter(s => emp.arranged?.some(a => a.siteId === s.id));
+    const arrangedSites = sites.filter(s => emp.arrSites?.some(a => a.siteId === s.id));
     if (arrangedSites.length === 0) continue;
 
     const resignDay = resignDayMap[emp.id] ?? null;
@@ -338,6 +340,8 @@ async function _onCellClick({ empId, siteId, day, direction = 'forward' }) {
     schedule:   getScheduleState(),
     siteId, empId, day, direction,
     leaveTypes: getSettingsState().leaveTypes ?? [],
+    stateWork: getSettingsState().onDutyKey?.[0] ?? '✔',
+    stateAsgnd: getSettingsState().onDutyKey?.[1] ?? '-',
     emp,
   });
   await setScheduleState(newSchedule);

@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════
 
 import { getSettingsState, setSettingsState } from '../../../core/store/globalState.js';
-import { showHint }                           from '../../../shared/utils/dom.js';
+import { showHint }                           from '../../../shared/utils/notify.js';
 
 /**
  * 建立一個 chip 管理器

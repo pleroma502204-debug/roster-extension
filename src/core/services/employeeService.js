@@ -10,7 +10,7 @@
  *
  * @param {object} params
  * @param {Site[]}     params.sites
- * @param {string}     params.empShift      - 'day' | 'night' | 'both'
+ * @param {string}     params.empShift      - ''日班' | '夜班' |  '日/夜'
  * @param {string[]}   params.empDuties     - 已勾選的勤務
  * @param {boolean}    params.isReg
  * @param {string[]}   params.forbiddenIds  - 禁排的 siteId[]
@@ -23,14 +23,14 @@ export function getArrangedCandidates({
   sites,
   empShift,
   empDuties,
-  isReg,
-  forbiddenIds,
-  alreadyArranged,
+  mobility,
+  forbSiteIds,
+  alreadyArrSites,
 }) {
-  const forbidSet    = new Set(forbiddenIds);
-  const checkPeriods = empShift === SHIFT.day.value   ? [SHIFT.day.value]
-                     : empShift === SHIFT.night.value ? [SHIFT.night.value]
-                     : [SHIFT.day.value, SHIFT.night.value];
+  const forbidSet    = new Set(forbSiteIds);
+  const checkPeriods = empShift === '日班' ? ['day']
+                     : empShift === '夜班' ? ['night']
+                     : ['day', 'night'];
   const result = [];
 
   for (const site of sites) {
@@ -42,10 +42,10 @@ export function getArrangedCandidates({
       for (const shift of (site.shifts[period] ?? [])) {
         if (!empDuties.includes(shift.duty)) continue;
 
-        if (isReg) {
+        if (mobility === '正班') {
           // 正班：用 last 判斷，再扣掉 modal 內已預排的數量
-          const modalUsed = alreadyArranged
-            .filter(a => a.siteId === site.id && a.duties?.includes(shift.duty))
+          const modalUsed = alreadyArrSites
+            .filter(a => a.siteId === site.id && a.duty === shift.duty)
             .length;
           if (shift.last - modalUsed > 0) matchingDuties.add(shift.duty);
         } else {

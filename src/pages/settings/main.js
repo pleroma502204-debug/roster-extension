@@ -4,12 +4,13 @@
 // ════════════════════════════════════════════
 
 import { getSettingsState, setSettingsState } from '../../core/store/globalState.js';
-import { showHint, setupCardToggles } from '../../shared/utils/dom.js';
-import { setupChipManager }        from './components/chipManager.js';
-import { setupCalendar, renderCalendar } from './components/calendarView.js';
+import { setupCardToggles }                   from '../../shared/utils/dom.js';
+import { showHint }                           from '../../shared/utils/notify.js';
+import { setupChipManager }                   from './components/chipManager.js';
+import { setupCalendar, renderCalendar }      from './components/calendarView.js';
 import {
   DEFAULT_LEAVE_TYPES, DEFAULT_DUTIES,
-  DEFAULT_DISTS, DEFAULT_LOCATED,
+  DEFAULT_REGIONS, DEFAULT_LOCATED,
 } from '../../shared/constants.js';
 
 const _cleanups = [];
@@ -24,6 +25,8 @@ export async function mount() {
 
   document.getElementById('org-name').value       = settings.orgName ?? '';
   document.getElementById('schedule-month').value = settings.month   ?? '';
+  document.getElementById('on-duty-key').value    = settings.onDutyKey?.[0] ?? '';
+  document.getElementById('non-empty-key').value  = settings.onDutyKey?.[1] ?? '';
 
   const [y, m] = (settings.month ?? `${TODAY.getFullYear()}-${String(TODAY.getMonth()+1).padStart(2,'0')}`).split('-');
   _calCtx.calYear  = parseInt(y);
@@ -31,6 +34,7 @@ export async function mount() {
 
   setupCardToggles('#page-settings', _cleanups);
   _setupBasic();
+  _setupKey();
   _setupChips();
   setupCalendar(_calCtx);
 }
@@ -60,6 +64,21 @@ function _setupBasic() {
   _cleanups.push(() => el.removeEventListener('click', h));
 }
 
+// ── 排班符號 ──────────────────────────────────
+function _setupKey() {
+  const el = document.getElementById('btn-save-key');
+  if (!el) return;
+  const h = async () => {
+    const onDutyKey = [ document.getElementById('on-duty-key').value.trim(), 
+                        document.getElementById('non-empty-key').value.trim()
+                      ];
+    await setSettingsState({ onDutyKey });
+    showHint('key-hint');
+  };
+  el.addEventListener('click', h);
+  _cleanups.push(() => el.removeEventListener('click', h));
+}
+
 // ── Chip 管理器（假別 / 勤務 / 轄區 / 駐地）──
 function _setupChips() {
   const configs = [
@@ -69,9 +88,9 @@ function _setupChips() {
       addBtnId: 'btn-add-leave', hintId: 'leave-hint',
     },
     {
-      stateKey: 'dists', defaults: DEFAULT_DISTS,
-      containerId: 'dist-chips', inputId: 'dist-input',
-      addBtnId: 'btn-add-dist', hintId: 'dist-hint',
+      stateKey: 'regions', defaults: DEFAULT_REGIONS,
+      containerId: 'region-chips', inputId: 'region-input',
+      addBtnId: 'btn-add-region', hintId: 'region-hint',
     },
     {
       stateKey: 'locateds', defaults: DEFAULT_LOCATED,

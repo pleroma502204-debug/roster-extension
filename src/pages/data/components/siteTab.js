@@ -4,10 +4,12 @@
 // ════════════════════════════════════════════
 
 import { getSitesState, setSitesState }         from '../../../core/store/globalState.js';
-import { getSettingsState }                      from '../../../core/store/globalState.js';
-import { SITE_TEMPLATE }                         from '../../../shared/constants.js';
+import { getSettingsState }                     from '../../../core/store/globalState.js';
+import { SITE_TEMPLATE }                        from '../../../shared/constants.js';
+import { showConfirm, showToastMsg }            from '../../../shared/utils/notify.js';
+import { ValidationError }                      from './validation.js';
 import { 
-  openModal, closeModal, bindModalClose, showConfirm, showWarning, bindEl, ValidationError
+        openModal, closeModal, bindModalClose, bindEl, fillSelect
 } from '../../../shared/utils/dom.js';
 
 let _editingSiteId = null;
@@ -17,7 +19,7 @@ const _cleanups = [];
 export function mount() {
   bindEl('btn-add-site',        'click',  () => openSiteModal(null), _cleanups);
   bindEl('btn-save-site',       'click',  saveSite, _cleanups);
-  bindEl('site-dist-filter',    'change', renderSites, _cleanups);
+  bindEl('site-region-filter',    'change', renderSites, _cleanups);
   bindEl('site-located-filter', 'change', renderSites, _cleanups);
   bindEl('site-search',         'input',  renderSites, _cleanups);
   bindEl('shift-day-add',       'click',  () => addShiftRow('day'), _cleanups);
@@ -26,12 +28,11 @@ export function mount() {
     document.getElementById('contacts-list').appendChild(makeContactRow());
   }, _cleanups);
 
-  _renderSelectOptions('site-dist-filter', getSettingsState().dists);
-  _renderSelectOptions('site-located-filter', getSettingsState().located);
+  fillSelect('site-region-filter',  getSettingsState().regions, '', '全部轄區');
+  fillSelect('site-located-filter', getSettingsState().located, '', '全部地點');
 
   _cleanups.push(bindModalClose('site-modal'));
   _cleanups.push(bindModalClose('confirm-modal'));
-  _cleanups.push(bindModalClose('warning-modal'));
 
   renderSites();
 }
@@ -47,10 +48,10 @@ export function renderSites() {
   const q = document.getElementById('site-search')?.value.trim().toLowerCase() ?? '';
 
   let filtered = sites;
-  const distFilter    = document.getElementById('site-dist-filter')?.value ?? '';
+  const regionFilter    = document.getElementById('site-region-filter')?.value ?? '';
   const locatedFilter = document.getElementById('site-located-filter')?.value ?? '';
 
-  if (distFilter) filtered = filtered.filter(s => s.dist === distFilter);
+  if (regionFilter) filtered = filtered.filter(s => s.region === regionFilter);
   if (locatedFilter) filtered = filtered.filter(s => s.located === locatedFilter);
   if (q)           filtered = filtered.filter(s => s.name.includes(q) || 
                                                    s.shortName?.includes(q) || 
@@ -88,7 +89,7 @@ export function renderSites() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${site.shortName ?? ''}</td>
-      <td>${site.dist ?? ''}</td>
+      <td>${site.region ?? ''}</td>
       <td>${site.located ?? ''}</td>
       <td>${site.phone ?? ''}</td>
       <td>${dayTotal   || '—'}</td>
@@ -123,7 +124,7 @@ function openSiteModal(id) {
   const sites = getSitesState();
   const site  = id ? sites.find(s => s.id === id) : SITE_TEMPLATE();
   const duties = getSettingsState().duties ?? [];
-  const dist = getSettingsState().dists ?? [];
+  const region = getSettingsState().regions ?? [];
   const located = getSettingsState().located ?? [];
 
   document.getElementById('site-modal-title').textContent = id ? '編輯據點' : '新增據點';
@@ -131,7 +132,7 @@ function openSiteModal(id) {
   document.getElementById('s-shortName').value    = site.shortName    ?? '';
   document.getElementById('s-phone').value        = site.phone        ?? '';
 
-  document.getElementById('s-dist').value         = site.dist         ?? '';
+  document.getElementById('s-region').value         = site.region         ?? '';
   document.getElementById('s-located').value      = site.located      ?? '';
   document.getElementById('s-email').value        = site.email        ?? '';
 
@@ -140,8 +141,8 @@ function openSiteModal(id) {
   document.getElementById('s-contractDate').value = site.contractDate ?? '';
   document.getElementById('s-districtDate').value = site.districtDate ?? '';
 
-  _renderSelectOptions('s-dist', getSettingsState().dists, site.dist ?? []);
-  _renderSelectOptions('s-located', getSettingsState().located, site.located ?? []);
+  fillSelect('s-region' , getSettingsState().regions, site.region ?? []);
+  fillSelect('s-located', getSettingsState().located, site.located ?? []);
   _renderContactList(site.contacts ?? []);
   _renderShifts('day',   site.shifts?.day   ?? [], duties);
   _renderShifts('night', site.shifts?.night ?? [], duties);
@@ -155,7 +156,7 @@ async function saveSite() {
       { key: 'shortName', id: 's-shortName', errMsg: '請填寫簡稱', valueType: 'text' },
       { key: 'address',   id: 's-address',   errMsg: '請填寫地址', valueType: 'text' },
       { key: 'phone',     id: 's-phone',     errMsg: '請填寫社區電話', valueType: 'text' },
-      { key: 'dist',      id: 's-dist',      errMsg: '請選擇轄區', valueType: 'select' },
+      { key: 'region',    id: 's-region',    errMsg: '請選擇轄區', valueType: 'select' },
       { key: 'located',   id: 's-located',   errMsg: '請選擇駐地', valueType: 'select' },
     ];
 
@@ -190,30 +191,11 @@ async function saveSite() {
 
   } catch (err) {
     if (err instanceof ValidationError) {
-      await showWarning(err.messages); 
+      showToastMsg(err.messages.join('・'), true);
     } else {
       console.error(err);
-      await showWarning('系統儲存時發生非預期錯誤：' + err.message);
+      showToastMsg('系統儲存時發生非預期錯誤：' + err.message, true);
     }
-  }
-}
-
-// ── 下拉選單渲染 ─----───────────────────────────────
-function _renderSelectOptions(selectId, options, selectedValue) {
-  const selectEl = document.getElementById(selectId);
-  if (!selectEl) return;
-  const currentSelected = Array.isArray(selectedValue) ? selectedValue[0] : selectedValue;
-
-  for (const opt of options) {
-    const option = document.createElement('option');
-    option.value = opt;
-    option.textContent = opt;
-
-    if (opt === currentSelected) {
-      option.selected = true;
-    }
-
-    selectEl.appendChild(option);
   }
 }
 

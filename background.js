@@ -55,11 +55,15 @@ async function exportSchedule(format) {
   try {
     const raw       = await chrome.storage.local.get(null);
     const settings  = raw[KEYS.SETTINGS]  ?? {};
-    const sites     = raw[KEYS.SITES]     ?? [];
-    const employees = raw[KEYS.EMPLOYEES] ?? [];
     const month     = settings.month ?? '';
 
     if (!month) return { ok: false, error: '請先在設定頁選擇排班月份' };
+
+    // 過濾過期據點和人員（與 globalState._rebuildDerived 邏輯一致）
+    const allSites     = raw[KEYS.SITES]     ?? [];
+    const allEmployees = raw[KEYS.EMPLOYEES] ?? [];
+    const sites        = allSites.filter(s => !s.CEDate    || s.CEDate.slice(0, 7)    >= month);
+    const employees    = allEmployees.filter(e => !e.lastDate || e.lastDate.slice(0, 7) >= month);
 
     const allSchedules = raw[KEYS.SCHEDULES] ?? {};
     const schedule     = allSchedules[month] ?? {};

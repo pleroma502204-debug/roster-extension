@@ -54,7 +54,7 @@ function _getCellFill(isHol, isDistDay) {
 }
 
 function applyCell(cell, value, isHol, isDistDay) {
-  const display = (value === 'work' || value === 'dash' || value === '✔' || value === '-')
+  const display = (value === 'work' || value === 'dash')
     ? '' : (value ?? '');
   const isLeave = display !== '';
   cell.value     = display;
@@ -219,7 +219,7 @@ export async function exportBigXlsx(settings, schedule, allSites, allEmps, holDa
         if (!dayMap || !(d in dayMap)) continue;
         const val = dayMap[d];
         if (val === 'dash') continue;
-        if (val === 'work') { cellVal = (site.shortName || site.name).charAt(0); break; }
+        if (val === 'work') { cellVal = site.name[2] || site.name[1]?.[0] || site.name[0]?.[0]; break; }
         cellVal = val; isLeave = true; break;
       }
       cell.value     = cellVal;

@@ -11,9 +11,10 @@ import {
 import { recalcLast }                            from '../../../core/services/siteService.js';
 import { getArrangedCandidates }                 from '../../../core/services/employeeService.js';
 import { SHIFT, MOBILITY, EMPLOYEE_TEMPLATE }    from '../../../shared/constants.js';
-import { 
-  openModal, closeModal, bindModalClose, showConfirm, showWarning, bindEl, ValidationError
-} from '../../../shared/utils/dom.js';
+import { openModal, closeModal, bindModalClose, bindEl, fillSelect } from '../../../shared/utils/dom.js';
+import { showConfirm, showToastMsg } from '../../../shared/utils/notify.js';
+import { ValidationError }                       from './validation.js';
+
 
 // ── 常數 ─────────────────────────────────────
 let _editingEmpId = null;
@@ -33,8 +34,7 @@ const EMP_FIELDS = [
   { key: 'note',       id: 'e-note',       def: '' },
   { key: 'days',       id: 'e-days',       def: 1 },
   { key: 'shift',      id: 'e-shift',      def: () => SHIFT.day.value },
-  // mobility 特別處理：因為 open 和 save 的 DOM value 與資料欄位(isReg)命名不同
-  { key: 'mobility',   id: 'e-isReg',      def: () => MOBILITY.flex.value }
+  { key: 'mobility',   id: 'e-mobility',   def: () => MOBILITY.flex.value }
 ];
 
 // ── 初始化 ────────────────────────────────────
@@ -43,7 +43,7 @@ export function mount() {
   bindEl('btn-save-emp',      'click',  saveEmployee, _cleanups);
   bindEl('emp-search',        'input',  renderEmployees, _cleanups);
   bindEl('emp-shift-filter',   'change', renderEmployees, _cleanups);
-  bindEl('emp-isReg-filter',   'change', renderEmployees, _cleanups);
+  bindEl('emp-mobility-filter',   'change', renderEmployees, _cleanups);
   bindEl('btn-add-forbidden', 'click',  () => _addSubRow('forbidden'), _cleanups);
   bindEl('btn-add-arranged',  'click',  () => _addSubRow('arranged'), _cleanups);
   bindEl('btn-open-map',      'click',  _openGoogleMaps, _cleanups);
@@ -51,7 +51,6 @@ export function mount() {
   _buildSelects();
   _cleanups.push(bindModalClose('emp-modal'));
   _cleanups.push(bindModalClose('confirm-modal'));
-  _cleanups.push(bindModalClose('warning-modal'));
 
   renderEmployees();
 }
@@ -67,11 +66,11 @@ export function renderEmployees() {
   const employees = getEmployeesState();
   const q      = document.getElementById('emp-search')?.value.trim().toLowerCase() ?? '';
   const shiftFilter = document.getElementById('emp-shift-filter')?.value ?? '';
-  const isRegFilter = document.getElementById('emp-isReg-filter')?.value ?? '';
+  const mobilityFilter = document.getElementById('emp-mobility-filter')?.value ?? '';
 
   let filtered = employees;
   if (shiftFilter) filtered = filtered.filter(e => e.shift === shiftFilter);
-  if (isRegFilter) filtered = filtered.filter(e => (e.isReg ? 'regular' : 'flex') === isRegFilter);
+  if (mobilityFilter) filtered = filtered.filter(e => e.mobility === mobilityFilter);
   if (q)      filtered = filtered.filter(e => e.name.includes(q) || e.phone?.includes(q) || e.address?.includes(q));
 
   document.getElementById('emp-count').textContent = `共 ${filtered.length} 筆`;
@@ -88,13 +87,13 @@ export function renderEmployees() {
 
   for (const emp of filtered) {
     const shiftLabel = { day: '日', night: '夜', both: '日/夜' }[emp.shift] ?? '—';
-    const typeLabel  = emp.isReg ? '正班' : '機動';
+    const typeLabel = MOBILITY[emp.mobility ?? 'flex']?.label ?? '機動';
     const dutyText   = emp.duties?.join('、') || '—';
     const arrangedText = (emp.arranged ?? [])
       .map(a => {
         const s = sites.find(s => s.id === a.siteId);
         if (!s) return null;
-        return `${s.shortName || s.name}${a.duties?.length ? `(${a.duties.join('/')})` : ''}`;
+        return `${s.shortName || s.name}${a.duties?.length ? `(${a.duties})` : ''}`;
       }).filter(Boolean).join('、') || '—';
 
     // 已排天數：當月 work 格數
@@ -117,7 +116,7 @@ export function renderEmployees() {
     tr.innerHTML = `
       <td>${emp.name}</td>
       <td>${shiftLabel}</td>
-      <td><span class="badge badge-${emp.isReg ? 'regular' : 'flex'}">${typeLabel}</span></td>
+      <span class="badge badge-${emp.mobility ?? 'flex'}">${typeLabel}</span>
       <td>${dutyText}</td>
       <td>${arrangedText}</td>
       <td>${daysHtml}</td>
@@ -161,7 +160,7 @@ export function openEmpModal(id) {
 
     if (id) { // 編輯模式
       if (key === 'mobility') {
-        el.value = emp.isReg ? MOBILITY.regular.value : MOBILITY.flex.value;
+        el.value = emp.mobility ?? MOBILITY.flex.value;
       } else {
         el.value = emp[key] ?? (typeof def === 'function' ? def() : def);
       }
@@ -184,7 +183,7 @@ function _buildSelects() {
     shiftSel.insertAdjacentHTML('beforeend', `<option value="${value}">${label}</option>`);
   }
 
-  const mobSel = document.getElementById('e-isReg');
+  const mobSel = document.getElementById('e-mobility');
   mobSel.innerHTML = '';
   for (const { value, label } of Object.values(MOBILITY)) {
     mobSel.insertAdjacentHTML('beforeend', `<option value="${value}">${label}</option>`);
@@ -202,9 +201,8 @@ function _getEmployeeFormData() {
   for (const { key, id: elId } of EMP_FIELDS) {
     const el = document.getElementById(elId);
     if (!el) continue;
-    if (key === 'mobility') { // mobility：兼顧資料結構裡的 isReg 與型態轉換
+    if (key === 'mobility') { // mobility
       data.mobility = el.value;
-      data.isReg = el.value === MOBILITY.regular.value;
     } else {  // 純文字就加上 .trim()
       data[key] = (el.type === 'text' || el.tagName === 'TEXTAREA') ? el.value.trim() : el.value;
     }
@@ -219,8 +217,6 @@ function _validateEmployeeData(data) {
   // 基礎必填檢查
   if (!data.name)          errors.push('請填寫姓名');
   if (!data.address)       errors.push('請填寫地址');
-  if (!data.shift)         errors.push('請選擇班段');
-  if (!data.mobility)      errors.push('請選擇班別');
   if (!data.duties.length) errors.push('請選擇至少一項勤務');
   
   // 跨欄位邏輯檢查
@@ -263,10 +259,10 @@ async function saveEmployee() {
 
   } catch (err) {
     if (err instanceof ValidationError) {
-      await showWarning(err.messages); 
+      showToastMsg(err.messages.join('・'), true);
     } else {
       console.error(err);
-      await showWarning('系統儲存時發生非預期錯誤：' + err.message);
+      showToastMsg('系統儲存時發生非預期錯誤：' + err.message, true);
     }
   }
 }
@@ -361,7 +357,7 @@ function _renderArrangedFields(row, siteSelect, item, commonCss) {
 
   const candidates = getArrangedCandidates({
     sites, empShift, empDuties,
-    isReg: document.getElementById('e-isReg').value === MOBILITY.regular.value,
+    mobility: document.getElementById('e-mobility').value,
     forbiddenIds,
     alreadyArranged,
   });
@@ -393,7 +389,7 @@ dutySelect.innerHTML = '<option value="">選擇勤務</option>';
   // 2. 重新動態計算可用勤務
   const freshCandidates = getArrangedCandidates({
     sites, empShift, empDuties,
-    isReg: document.getElementById('e-isReg').value === MOBILITY.regular.value,
+    mobility: document.getElementById('e-mobility').value,
     forbiddenIds: [],
     alreadyArranged: [],
   });
@@ -484,11 +480,11 @@ export function refreshMapSelects() {
 async function _openGoogleMaps() {
   const empId  = document.getElementById('map-emp-select')?.value;
   const siteId = document.getElementById('map-site-select')?.value;
-  if (!empId || !siteId) { await showWarning('請先選擇人員和據點'); return; }
+  if (!empId || !siteId) { showToastMsg('請先選擇人員和據點', true); return; }
 
   const emp  = getEmployeesState().find(e => e.id === empId);
   const site = getSitesState().find(s => s.id === siteId);
-  if (!emp?.address || !site?.address) { await showWarning('人員或據點地址未填寫'); return; }
+  if (!emp?.address || !site?.address) { showToastMsg('人員或據點地址未填寫', true); return; }
 
   const url = `https://www.google.com/maps/dir/?api=1`
     + `&origin=${encodeURIComponent(emp.address)}`

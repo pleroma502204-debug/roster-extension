@@ -14,7 +14,9 @@ import {
   getEmployees, setEmployees as _setEmployees,
   getMonthSchedule, setMonthSchedule as _setMonthSchedule,
 } from '../../shared/storage.js';
-import { DEFAULT_DUTIES, DEFAULT_LEAVE_TYPES, DEFAULT_DISTS, DEFAULT_LOCATED } from '../../shared/constants.js';
+import { 
+  DEFAULT_DUTIES, DEFAULT_LEAVE_TYPES, DEFAULT_REGIONS, DEFAULT_LOCATED, DEFAULT_ONDUTY_KEY
+} from '../../shared/constants.js';
 import { daysUntil } from '../../shared/utils/date.js';
 
 // ── 記憶體狀態 ────────────────────────────────
@@ -47,7 +49,8 @@ export async function init() {
     holidayRaw:   {},
     calOverrides: {},
     ...settings,
-    dists:             settings.dists             ?? DEFAULT_DISTS,
+    onDutyKey:         settings.onDutyKey         ?? DEFAULT_ONDUTY_KEY,
+    regions:           settings.regions           ?? DEFAULT_REGIONS,
     leaveTypes:        settings.leaveTypes        ?? DEFAULT_LEAVE_TYPES,
     duties:            settings.duties            ?? DEFAULT_DUTIES,
     located:           settings.located           ?? DEFAULT_LOCATED,
@@ -105,25 +108,34 @@ function _rebuildDerived() {
 
   // 過濾過期據點（合約日早於排班月份）
   _derived.activeSites = _state.sites.filter(site => {
-    if (!site.contractDate || !month) return true;
-    return site.contractDate.slice(0, 7) >= month;
+    if (!site.CEDate || !month) return true;
+    return site.CEDate.slice(0, 7) >= month;
   });
 
   // 過濾過期人員（離職日早於排班月份）
   _derived.activeEmployees = _state.employees.filter(emp => {
-    if (!emp.resignDate || !month) return true;
-    return emp.resignDate.slice(0, 7) >= month;
+    if (!emp.lastDate || !month) return true;
+    return emp.lastDate.slice(0, 7) >= month;
   });
 
   // 期限清單：合約日 + 區大日 + 離職日，依距今排序
   const rows = [];
   for (const site of _state.sites) {
     const label = site.shortName || site.name;
-    if (site.contractDate) rows.push({ type: '合約日', name: label, date: site.contractDate, days: daysUntil(site.contractDate) });
-    if (site.districtDate) rows.push({ type: '區大日', name: label, date: site.districtDate, days: daysUntil(site.districtDate) });
+    if (site.CEDate)   rows.push({ type: '合約日', 
+                                   name: site.name[1] || site.name[0], 
+                                   date: site.CEDate,   
+                                   days: daysUntil(site.CEDate)   });
+    if (site.HOADate)  rows.push({ type: '區大日', 
+                                   name: site.name[1] || site.name[0], 
+                                   date: site.HOADate, 
+                                   days: daysUntil(site.HOADate)  });
   }
   for (const emp of _state.employees) {
-    if (emp.resignDate) rows.push({ type: '離職日', name: emp.name, date: emp.resignDate, days: daysUntil(emp.resignDate) });
+    if (emp.lastDate)  rows.push({ type: '離職日', 
+                                   name: emp.name,
+                                   date: emp.lastDate, 
+                                   days: daysUntil(emp.lastDate)  });
   }
   rows.sort((a, b) => (a.days ?? Infinity) - (b.days ?? Infinity));
   _derived.deadlines = rows;

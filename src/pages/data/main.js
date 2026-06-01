@@ -4,13 +4,14 @@
 // ════════════════════════════════════════════
 
 import { subscribe, getSettingsState, setSettingsState } from '../../core/store/globalState.js';
-import { setupCardToggles, showHint, debounce }          from '../../shared/utils/dom.js';
+import { setupCardToggles, debounce }                    from '../../shared/utils/dom.js';
 import { mount as mountSite,  
          unmount as unmountSite, renderSites }           from './components/siteTab.js';
 import { mount as mountEmp, 
          unmount as unmountEmp, 
          renderEmployees, refreshMapSelects }            from './components/employeeTab.js';
 import { renderDeadlinePanel }                           from './components/deadlinePanel.js';
+import { showHint }                                      from '../../shared/utils/notify.js';
 
 const _cleanups = [];
 
